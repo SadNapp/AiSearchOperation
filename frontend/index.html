@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAR-VISION // TACTICAL MILITARY DASHBOARD</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="theme-tactical">
+    <!-- Головний обгортаючий контейнер із відступами від країв екрана -->
+    <div class="app-outer-wrapper">
+        <div class="app-frame">
+            <!-- Верхня військово-тактична панель -->
+            <header class="top-bar">
+                <div class="brand">
+                    <div class="status-indicator-box">
+                        <span class="status-dot active"></span>
+                    </div>
+                    <div class="brand-title">
+                        <h1>SAR-VISION <span class="badge-tag">MILITARY TAC</span></h1>
+                        <span class="subtitle">TACTICAL SEARCH & RESCUE MISSION CONTROL</span>
+                    </div>
+                </div>
+
+                <div class="header-center-info">
+                    <div class="hud-stat-item">
+                        <span class="hud-label">SYSTEM STATUS</span>
+                        <span class="hud-value success" id="signal-status">READY / STANDBY</span>
+                    </div>
+                    <div class="hud-stat-item">
+                        <span class="hud-label">ACTIVE VIDEO DATASET</span>
+                        <span class="hud-value highlight" id="active-source-badge">farhuman_medium.mp4</span>
+                    </div>
+                    <div class="hud-stat-item">
+                        <span class="hud-label">PROCESSING LATENCY</span>
+                        <span class="hud-value" id="hud-latency">-- ms</span>
+                    </div>
+                </div>
+
+                <div class="header-right">
+                    <!-- Перемикач теми інтерфейсу -->
+                    <div class="theme-selector-box">
+                        <label for="theme-select" class="time-label">UI THEME:</label>
+                        <select id="theme-select" class="form-select theme-select-input">
+                            <option value="theme-tactical" selected>TACTICAL KHAKI</option>
+                            <option value="theme-bright-green">BRIGHT CYBER GREEN</option>
+                        </select>
+                    </div>
+
+                    <div class="system-time-box">
+                        <span class="time-label">MISSION UTC TIME</span>
+                        <div class="system-time" id="system-time">00:00:00 UTC</div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="dashboard-grid">
+                <!-- Ліва зона: Відеопотік, BBox Canvas накладання та Панель кнопок -->
+                <section class="video-section">
+                    <div class="video-wrapper">
+                        <div class="video-container" id="video-container">
+                            <!-- Тактичні кутові рамки -->
+                            <div class="corner-border top-left"></div>
+                            <div class="corner-border top-right"></div>
+                            <div class="corner-border bottom-left"></div>
+                            <div class="corner-border bottom-right"></div>
+
+                            <!-- Візуальна плашка зуму поверх відео -->
+                            <div class="zoom-hud-badge">
+                                <span class="zoom-icon">🔍</span>
+                                <span id="zoom-level-text">1.0x</span>
+                                <button id="btn-zoom-in" class="zoom-btn" title="Zoom In">+</button>
+                                <button id="btn-zoom-out" class="zoom-btn" title="Zoom Out">-</button>
+                                <button id="btn-zoom-reset" class="zoom-reset-btn" title="Reset Zoom to 1.0x">RESET</button>
+                            </div>
+
+                            <!-- Внутрішній трансформований контейнер відео та canvas -->
+                            <div class="video-viewport-content" id="video-viewport-content">
+                                <!-- HTML5 Відео Плеєр для MP4 файлів (farhuman_medium.mp4, midlhuman_medium.mp4) -->
+                                <video id="video-player" class="media-display" loop muted playsinline preload="auto">
+                                    <source id="video-source" src="../assets/dataset/video/farhuman_medium.mp4" type="video/mp4">
+                                    Браузер не підтримує відтворення HTML5 відео.
+                                </video>
+
+                                <!-- Елемент для MJPEG-стріму з бекенду -->
+                                <img id="video-stream" src="" alt="STREAM OFFLINE" class="media-display" style="display: none;">
+
+                                <!-- Полотно (Canvas) для малювання рамок BBox та координат у реальному часі -->
+                                <canvas id="bbox-canvas" class="bbox-canvas-layer"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Панель управління кнопками PLAY / STOP та перемикачем відео -->
+                        <div class="controls-bar" id="controls-bar">
+                            <div class="control-buttons">
+                                <button id="btn-play" class="btn btn-primary" title="Start / Resume Video Processing">
+                                    <span class="btn-icon">▶</span> PLAY VIDEO
+                                </button>
+                                <button id="btn-stop" class="btn btn-danger" title="Stop Video Stream">
+                                    <span class="btn-icon">⏹</span> STOP
+                                </button>
+                            </div>
+
+                            <div class="video-source-selector">
+                                <label for="video-select" class="control-label">VIDEO SOURCE:</label>
+                                <select id="video-select" class="form-select select-accent">
+                                    <option value="../assets/dataset/video/farhuman_medium.mp4" selected>Far Distance (farhuman_medium.mp4)</option>
+                                    <option value="../assets/dataset/video/midlhuman_medium.mp4">Middle Distance (midlhuman_medium.mp4)</option>
+                                    <option value="mjpeg_stream">Live Stream (FastAPI MJPEG)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="timeline-container">
+                                <input type="range" id="video-timeline" min="0" max="100" value="0" step="0.1">
+                                <span id="timeline-time">00:00 / 00:00</span>
+                            </div>
+
+                            <div class="control-toggles">
+                                <label class="toggle-container" title="Toggle AI Bounding Boxes overlay">
+                                    <input type="checkbox" id="toggle-bbox" checked>
+                                    <span class="toggle-slider"></span>
+                                    <span class="toggle-text">BBOX OVERLAY</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Права зона: Конфігурація AI, Метрики Апаратного забезпечення, Статистика Впевненості та Інспектор BBox -->
+                <aside class="control-panel">
+                    <!-- Блок конфігурації AI Моделі та Алгоритму Трекінгу -->
+                    <div class="panel-box">
+                        <div class="box-header">
+                            <h2>AI MODEL & TRACKER CONFIGURATION</h2>
+                            <span class="box-tag">YOLO v11</span>
+                        </div>
+                        
+                        <div class="model-status">
+                            <span class="label">NEURAL ARCHITECTURE:</span>
+                            <div class="model-badge" id="current-model-badge">YOLOv11s-rescue</div>
+                        </div>
+
+                        <div class="model-selector-group">
+                            <label for="model-select">SELECT NEURAL NETWORK:</label>
+                            <select id="model-select" class="form-select">
+                                <option value="yolov11n-rescue">YOLOv11n (Nano - Fast Scan)</option>
+                                <option value="yolov11s-rescue" selected>YOLOv11s (Small - Optimal Precision)</option>
+                                <option value="yolov11m-rescue">YOLOv11m (Medium - High Resolution)</option>
+                                <option value="yolov8x-thermal">YOLOv8x-Thermal (Infrared Sensor)</option>
+                            </select>
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <span>CONFIDENCE THRESHOLD</span>
+                                <span id="conf-thresh-val">0.35</span>
+                            </div>
+                            <input type="range" id="conf-threshold" min="0.10" max="0.95" step="0.05" value="0.35" class="custom-range">
+                        </div>
+                    </div>
+
+                    <!-- Блок Апаратної Телеметрії (FPS GPU, FPS CPU, OTHER/Hailo NPU) -->
+                    <div class="panel-box">
+                        <div class="box-header">
+                            <h2>HARDWARE & MISSION TELEMETRY</h2>
+                            <span class="status-indicator-sm"></span>
+                        </div>
+                        <div class="metrics-grid">
+                            <div class="metric-card alert">
+                                <span class="metric-label">FPS GPU</span>
+                                <span class="metric-value highlight-khaki" id="metric-fps-gpu">0.0</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-label">FPS CPU</span>
+                                <span class="metric-value highlight-olive" id="metric-fps-cpu">0.0</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-label">OTHER (HAILO NPU)</span>
+                                <span class="metric-value metric-small" id="metric-npu">STANDBY</span>
+                            </div>
+                            <div class="metric-card alert">
+                                <span class="metric-label">DETECTED SUBJECTS</span>
+                                <span class="metric-value highlight-khaki" id="metric-people">0</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-label">GROUND TRUTH (GT)</span>
+                                <span class="metric-value" id="metric-gt">0</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-label">INFERENCE TIME</span>
+                                <span class="metric-value" id="metric-inference">0 <small>ms</small></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Спеціальний Блок: СТАТИСТИКА ВПЕВНЕНОСТІ ШІ МОДЕЛІ -->
+                    <div class="panel-box">
+                        <div class="box-header">
+                            <h2>AI CONFIDENCE ANALYTICS</h2>
+                            <span class="box-tag accent">STATISTICS</span>
+                        </div>
+                        
+                        <div class="confidence-summary-grid">
+                            <div class="conf-stat-card">
+                                <span class="conf-label">MEAN CONFIDENCE</span>
+                                <span class="conf-value highlight-olive" id="conf-mean">0.0%</span>
+                            </div>
+                            <div class="conf-stat-card">
+                                <span class="conf-label">MIN / MAX RANGE</span>
+                                <span class="conf-value" id="conf-range">0% - 0%</span>
+                            </div>
+                        </div>
+
+                        <div class="conf-meter-wrapper">
+                            <div class="conf-meter-label">
+                                <span>DETECTION QUALITY INDEX</span>
+                                <span id="conf-quality-text">STANDBY</span>
+                            </div>
+                            <div class="conf-meter-bar-track">
+                                <div class="conf-meter-bar-fill" id="conf-bar-fill" style="width: 0%;"></div>
+                            </div>
+                            <div class="conf-breakdown-row">
+                                <span>HIGH CONF (&gt;75%): <strong id="high-conf-count">0</strong></span>
+                                <span>MODERATE (35-75%): <strong id="med-conf-count">0</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Спеціальний Блок: КООРДИНАТИ BBOX В РЕАЛЬНОМУ ЧАСІ -->
+                    <div class="panel-box bbox-inspector-box">
+                        <div class="box-header">
+                            <h2>TARGET BBOX COORDINATES</h2>
+                            <span class="hud-live-tag">INSPECTOR</span>
+                        </div>
+                        
+                        <div class="bbox-table-header">
+                            <span>ID / CLASS</span>
+                            <span>CONF</span>
+                            <span>COORDINATES [X1, Y1, X2, Y2]</span>
+                            <span>STATUS</span>
+                        </div>
+                        
+                        <div class="bbox-list-container" id="bbox-list">
+                            <div class="bbox-empty-state">NO ACTIVE DETECTIONS // AWAITING FASTAPI STREAM</div>
+                        </div>
+                    </div>
+                </aside>
+            </main>
+        </div>
+    </div>
+
+    <!-- Скрипти -->
+    <script src="js/api.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
