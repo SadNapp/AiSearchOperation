@@ -1,13 +1,11 @@
-import cv2
-import orjson
-import pytest
-from fastapi import FastAPI
-from ultralytics import YOLO
+"""
+SAR-VISION // Main Entry Point
+Launches FastAPI backend application with uvicorn server.
+"""
 
-print("✅ OpenCV версія:", cv2.__version__)
-print("✅ YOLO (Ultralytics) успішно імпортовано!")
-print("✅ orjson працює, тест парсингу:", orjson.loads(b'{"metric": "fps", "value": 60}'))
-print("✅ pytest працює, версія:", pytest.__version__)
+import uvicorn
+from backend.api.app import app
 
-app = FastAPI()
-print("✅ FastAPI готовий до роботи!")
+if __name__ == "__main__":
+    print("🚀 Launching SAR-VISION Tactical FastAPI Backend on http://localhost:8000 ...")
+    uvicorn.run(app, host="0.0.0.0", port=8000)
